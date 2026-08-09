@@ -13,7 +13,7 @@ A personal terminal tool for surfacing intern/co-op/new grad job postings and ge
 python run_pipeline.py
 
 # Ingest from a specific source
-python run_pipeline.py --source hn_who_is_hiring   # or remoteok, remotive, all
+python run_pipeline.py --source hn_who_is_hiring   # or remoteok, remotive, adzuna, all
 
 # List new postings in the terminal
 python run_pipeline.py --list
@@ -55,7 +55,8 @@ run_pipeline.py  ←── primary CLI entrypoint (rich terminal UI)
 app/pipeline.py  ←── orchestrates ingest → filter (no drafting)
       │
       ├── app/ingestion/fetcher.py   fetch_and_store(source, db)
-      │     Sources: hn_who_is_hiring (Algolia API), remoteok (JSON API), remotive (JSON API)
+      │     Sources: hn_who_is_hiring (Algolia API), remoteok (JSON API), remotive (JSON API),
+      │              adzuna (JSON API, requires free ADZUNA_APP_ID/ADZUNA_APP_KEY in .env)
       │     Dedupes by URL. Stores posted_at from each source's timestamp field.
       │     Filters junk with MIN_POSTING_LENGTH=150 + JUNK_PATTERNS regex.
       │
