@@ -13,7 +13,7 @@ Commands:
 """
 import sys
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from rich.console import Console
 from rich.text import Text
@@ -26,6 +26,8 @@ from app.pipeline import run_pipeline
 from app.drafting.drafter import draft as generate_draft, tailor as generate_tailor
 
 console = Console()
+
+MAX_POSTING_AGE_DAYS = 3
 
 
 # ---------------------------------------------------------------------------
@@ -172,14 +174,17 @@ def cmd_list(status_filter: str | None, show_draft: bool):
         else:
             q = q.filter(Posting.status == "new")
 
+        cutoff = datetime.now(timezone.utc) - timedelta(days=MAX_POSTING_AGE_DAYS)
+        q = q.filter(Posting.posted_at.isnot(None), Posting.posted_at >= cutoff)
+
         postings = q.order_by(Posting.posted_at.desc().nullslast()).all()
 
         if not postings:
-            console.print("[dim]No postings found.[/]")
+            console.print(f"[dim]No postings found within the last {MAX_POSTING_AGE_DAYS} days.[/]")
             return
 
         label = status_filter or "new"
-        console.print(Rule(f"[bold cyan]{len(postings)} posting(s) — {label}[/]"))
+        console.print(Rule(f"[bold cyan]{len(postings)} posting(s) — {label} — last {MAX_POSTING_AGE_DAYS}d[/]"))
         console.print()
 
         for p in postings:
