@@ -5,12 +5,14 @@ Sources:
   - hn_who_is_hiring  (HN "Who is Hiring?" via Algolia — no scraping)
   - remoteok          (RemoteOK public JSON API)
   - remotive          (Remotive public JSON API)
+  - adzuna            (Adzuna public JSON API — job aggregator, requires free API key)
 """
 import re
 from datetime import datetime, timezone, timedelta
 import httpx
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.db.database import Posting
 
 
@@ -222,6 +224,67 @@ def _fetch_remotive() -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Adzuna
+# ---------------------------------------------------------------------------
+
+ADZUNA_URL = "https://api.adzuna.com/v1/api/jobs/ca/search/{page}"
+
+
+def _fetch_adzuna() -> list[dict]:
+    if not settings.adzuna_app_id or not settings.adzuna_app_key:
+        print("  Adzuna: skipped (set ADZUNA_APP_ID / ADZUNA_APP_KEY in .env)")
+        return []
+
+    postings = []
+    for page in (1, 2):
+        resp = httpx.get(
+            ADZUNA_URL.format(page=page),
+            params={
+                "app_id": settings.adzuna_app_id,
+                "app_key": settings.adzuna_app_key,
+                "results_per_page": 50,
+                "category": "it-jobs",
+                "sort_by": "date",
+                "max_days_old": 14,
+                "content-type": "application/json",
+            },
+            timeout=20,
+        )
+        resp.raise_for_status()
+        results = resp.json().get("results", [])
+        if not results:
+            break
+
+        for j in results:
+            url = j.get("redirect_url", "")
+            if not url:
+                continue
+            title = j.get("title", "") or ""
+            company = (j.get("company") or {}).get("display_name", "") or ""
+            location = (j.get("location") or {}).get("display_name", "") or ""
+            description = f"{title}\n{company}\n{location}\n\n{j.get('description', '') or ''}"
+
+            created = j.get("created")  # ISO string, e.g. "2024-03-15T12:00:00Z"
+            posted_at = None
+            if created:
+                try:
+                    posted_at = datetime.fromisoformat(created.replace("Z", "+00:00"))
+                except ValueError:
+                    pass
+
+            postings.append({
+                "url": url,
+                "title": title[:200],
+                "company": company[:200],
+                "description": description,
+                "source": "adzuna",
+                "posted_at": posted_at,
+            })
+
+    return postings
+
+
+# ---------------------------------------------------------------------------
 # Source registry + main entry point
 # ---------------------------------------------------------------------------
 
@@ -229,6 +292,7 @@ SOURCES: dict[str, callable] = {
     "hn_who_is_hiring": _fetch_hn_who_is_hiring,
     "remoteok": _fetch_remoteok,
     "remotive": _fetch_remotive,
+    "adzuna": _fetch_adzuna,
     "all": None,  # special: runs all sources
 }
 
@@ -236,7 +300,7 @@ SOURCES: dict[str, callable] = {
 def fetch_and_store(source: str, db: Session) -> dict:
     if source == "all":
         results = {}
-        for s in ("hn_who_is_hiring", "remoteok", "remotive"):
+        for s in ("hn_who_is_hiring", "remoteok", "remotive", "adzuna"):
             results[s] = _store(SOURCES[s](), db)
         total = {k: sum(r[k] for r in results.values()) for k in ("fetched", "new", "skipped")}
         total["per_source"] = results

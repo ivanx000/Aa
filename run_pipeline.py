@@ -64,6 +64,7 @@ SOURCE_LABEL = {
     "hn_who_is_hiring": "HN",
     "remoteok":         "RemoteOK",
     "remotive":         "Remotive",
+    "adzuna":           "Adzuna",
 }
 
 
@@ -367,7 +368,7 @@ if __name__ == "__main__":
         if idx + 1 < len(args):
             cmd_run(source=args[idx + 1])
         else:
-            console.print("[red]Usage:[/] --source <hn_who_is_hiring|remoteok|remotive|all>")
+            console.print("[red]Usage:[/] --source <hn_who_is_hiring|remoteok|remotive|adzuna|all>")
 
     else:
         console.print(__doc__)
