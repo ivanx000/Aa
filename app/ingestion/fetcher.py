@@ -77,8 +77,10 @@ def _fetch_hn_who_is_hiring() -> list[dict]:
     if not wih_hits:
         return []
 
-    story_id = wih_hits[0]["objectID"]
-    story_title = wih_hits[0].get("title", "")
+    # Algolia /search ranks by relevance, not recency — pick the newest thread explicitly.
+    newest = max(wih_hits, key=lambda h: h.get("created_at_i", 0))
+    story_id = newest["objectID"]
+    story_title = newest.get("title", "")
     print(f"  HN thread: {story_title} (id={story_id})")
 
     postings = []
