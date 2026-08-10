@@ -53,11 +53,29 @@ def relative_time(dt: datetime | None) -> str:
     return f"{d} day{'s' if d != 1 else ''} ago"
 
 
+def age_color(dt: datetime | None) -> str:
+    """Green when fresh, sliding through yellow to red as a posting nears MAX_POSTING_AGE_DAYS."""
+    if dt is None:
+        return "grey58"
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    hours = max(0.0, (datetime.now(timezone.utc) - dt).total_seconds() / 3600)
+    frac = min(1.0, hours / (MAX_POSTING_AGE_DAYS * 24))
+
+    stops = [(0.0, (90, 230, 110)), (0.5, (240, 210, 60)), (1.0, (235, 70, 70))]
+    (f0, c0), (f1, c1) = next(
+        (a, b) for a, b in zip(stops, stops[1:]) if frac <= b[0]
+    )
+    t = 0.0 if f1 == f0 else (frac - f0) / (f1 - f0)
+    r, g, b = (round(c0[i] + (c1[i] - c0[i]) * t) for i in range(3))
+    return f"rgb({r},{g},{b})"
+
+
 STATUS_COLOR = {
     "new":      "bright_cyan",
     "reviewed": "bright_yellow",
     "sent":     "bright_green",
-    "rejected": "dim",
+    "rejected": "grey58",
 }
 
 SOURCE_LABEL = {
@@ -82,15 +100,15 @@ def print_posting(p: Posting, show_draft: bool = False, show_tailor: bool = Fals
         # Trim title to avoid repetition if it starts with company name
         short_title = title[len(company):].lstrip(" |–-").strip() if title.lower().startswith(company.lower()) else title
         if short_title:
-            header.append(f"  ·  {short_title[:90]}", style="white")
+            header.append(f"  ·  {short_title[:90]}", style="bright_white")
 
     console.print(header)
 
     # Meta line: source, time, url
     meta = Text()
-    meta.append(f"    [{source_label}]", style="dim cyan")
-    meta.append(f"  {relative_time(p.posted_at)}", style="dim")
-    meta.append(f"  {p.url}", style="dim blue underline")
+    meta.append(f"    [{source_label}]", style="bold cyan")
+    meta.append(f"  {relative_time(p.posted_at)}", style=f"bold {age_color(p.posted_at)}")
+    meta.append(f"  {p.url}", style="bright_blue underline")
     console.print(meta)
 
     # Keywords (if available)
@@ -99,7 +117,7 @@ def print_posting(p: Posting, show_draft: bool = False, show_tailor: bool = Fals
             kws = json.loads(p.keywords)
             if kws:
                 kw_text = Text("    ")
-                kw_text.append("keywords: ", style="dim")
+                kw_text.append("keywords: ", style="grey58")
                 kw_text.append("  ".join(f"#{k}" for k in kws), style="bright_magenta")
                 console.print(kw_text)
         except (json.JSONDecodeError, TypeError):
@@ -108,35 +126,35 @@ def print_posting(p: Posting, show_draft: bool = False, show_tailor: bool = Fals
     # Blurb (if requested and available)
     if show_draft and p.draft:
         console.print()
-        console.print(Padding(Text(p.draft, style="italic"), (0, 0, 0, 4)))
+        console.print(Padding(Text(p.draft, style="italic bright_white"), (0, 0, 0, 4)))
 
     # Tailoring (if requested and available)
     if show_tailor and p.tailoring:
         try:
             t = json.loads(p.tailoring)
             console.print()
-            console.print(Text("    ── TAILORING ──", style="bold yellow"))
+            console.print(Text("    ── TAILORING ──", style="bold bright_yellow"))
 
             if t.get("bullets_to_emphasize"):
-                console.print(Text("    Emphasize these bullets:", style="yellow"))
+                console.print(Text("    Emphasize these bullets:", style="bright_yellow"))
                 for b in t["bullets_to_emphasize"]:
-                    console.print(Text(f"      • {b}", style="white"))
+                    console.print(Text(f"      • {b}", style="bright_white"))
 
             if t.get("rewrites"):
                 console.print()
-                console.print(Text("    Suggested rewrites:", style="yellow"))
+                console.print(Text("    Suggested rewrites:", style="bright_yellow"))
                 for r in t["rewrites"]:
-                    console.print(Text(f"      Before: {r.get('original','')}", style="dim"))
+                    console.print(Text(f"      Before: {r.get('original','')}", style="grey58"))
                     console.print(Text(f"      After:  {r.get('suggested','')}", style="bright_white"))
 
             if t.get("blurb"):
                 console.print()
-                console.print(Text("    Blurb:", style="yellow"))
-                console.print(Padding(Text(t["blurb"], style="italic"), (0, 0, 0, 6)))
+                console.print(Text("    Blurb:", style="bright_yellow"))
+                console.print(Padding(Text(t["blurb"], style="italic bright_white"), (0, 0, 0, 6)))
         except (json.JSONDecodeError, TypeError):
             pass
 
-    console.print(Rule(style="dim"))
+    console.print(Rule(style="grey35"))
 
 
 # ---------------------------------------------------------------------------
