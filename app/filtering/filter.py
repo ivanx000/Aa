@@ -4,7 +4,8 @@ A posting must pass ALL checks to proceed to drafting.
 
 Checks (in order):
   1. Keyword match  — title/description contains a target role keyword
-  2. Intern match   — posting is for an intern/co-op/student/new grad role
+  2. Intern match   — posting is for an intern/co-op/student role, and is not
+                       a senior-level role (even one that mentions interns elsewhere)
   3. Location match — remote (anywhere) OR onsite/hybrid in Canada
 """
 import re
@@ -30,18 +31,28 @@ def _keyword_match(title: str, description: str) -> bool:
 _INTERN_RE = re.compile(
     r"\bintern\b|\binternship\b"
     r"|\bco-?op\b"
-    r"|\bstudent\b"
-    r"|\bnew\s+grad\b|\bnew\s+graduate\b"
-    r"|\bentry[\s-]level\b"
-    r"|\bgraduate\s+(role|position|opportunity)\b"
-    r"|\bjunior\b",
+    r"|\bstudent\b",
+    re.IGNORECASE,
+)
+
+# Seniority signals that disqualify a posting outright, even if it also
+# mentions interns/students elsewhere (e.g. "senior engineers mentor our interns")
+_SENIOR_RE = re.compile(
+    r"\bsenior\b|\bsr\.?\b|\bstaff\b|\bprincipal\b|\blead\b|\barchitect\b"
+    r"|\bdirector\b|\bhead\s+of\b|\bvp\b|\bmanager\b"
+    r"|\bnew\s+grad\b|\bnew\s+graduate\b|\bentry[\s-]level\b|\bjunior\b",
     re.IGNORECASE,
 )
 
 
 def _intern_match(title: str, description: str) -> bool:
-    """Title is checked first — a title hit is sufficient. Description is also checked."""
-    return bool(_INTERN_RE.search(title)) or bool(_INTERN_RE.search(description))
+    """Only the title is checked — description-body mentions of "intern"/"co-op"/
+    "student" are too often incidental (e.g. "co-op experience counts" on a
+    full-time role) rather than the role itself being one.
+    """
+    if _SENIOR_RE.search(title):
+        return False
+    return bool(_INTERN_RE.search(title))
 
 
 # ---------------------------------------------------------------------------
