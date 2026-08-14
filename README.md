@@ -10,6 +10,7 @@ A personal terminal tool that ingests job postings, filters them to relevant int
 - Generates on-demand "why I'm a good fit" blurbs via local LLM (Ollama)
 - Suggests resume keywords and bullet rewrites tailored to each posting
 - Tracks status (new → reviewed → sent / rejected) in a local SQLite DB
+- Reports the top skills/tools/languages showing up across all scraped postings (not just intern-filtered ones), so you can see what the market is asking for right now
 
 Everything is manual and on-demand — you review and send, the tool just surfaces and drafts.
 
@@ -55,6 +56,12 @@ python run_pipeline.py --tailor <url>
 python run_pipeline.py --status <url> reviewed
 python run_pipeline.py --status <url> sent
 python run_pipeline.py --status <url> rejected
+
+# Top skills/tools/languages in demand this week (across all scraped postings)
+python run_pipeline.py --trends
+
+# Custom window and list size
+python run_pipeline.py --trends --days 30 --top 20
 ```
 
 ## Stack

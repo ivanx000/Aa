@@ -29,6 +29,10 @@ python run_pipeline.py --tailor <url>
 # Update a posting's status
 python run_pipeline.py --status <url> reviewed|sent|rejected
 
+# Top skills/tools/languages across all scraped postings (not just intern-filtered ones)
+python run_pipeline.py --trends
+python run_pipeline.py --trends --days 30 --top 20   # custom window / list size
+
 # Run the FastAPI server (not needed for normal use)
 uvicorn app.main:app --reload
 
@@ -73,6 +77,17 @@ app/drafting/drafter.py
   tailor(title, description) → TailoringResult(blurb, keywords, bullets_to_emphasize, rewrites)
   Both call Ollama (llama3.2 by default) with temperature=0.3.
   _parse_response() strips markdown fences and extracts first {...} JSON block.
+
+On-demand trend analysis (called directly from run_pipeline.py, never from pipeline.py):
+
+app/analytics/trends.py
+  compute_trends(postings, top_n) → list[SkillCount]
+  Regex-matches title+description against SKILL_TAXONOMY (languages, frameworks,
+  ML, cloud, databases, tools), counting each skill once per posting. Scans ALL
+  stored postings within the window (including status="rejected"), not just the
+  intern-filtered subset — this is a market-wide signal, not a search result.
+  Bare "C" and "go" are deliberately excluded from the taxonomy — too noisy as
+  common English words/abbreviations ("C-suite", "go-to-market") in free text.
 ```
 
 ## Data model
