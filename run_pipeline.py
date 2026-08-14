@@ -10,6 +10,8 @@ Commands:
   python run_pipeline.py --draft-all         Generate blurbs for all new unreviewed postings
   python run_pipeline.py --tailor <url>      Full resume tailoring for one posting
   python run_pipeline.py --status <url> reviewed|sent|rejected   Update a posting's status
+  python run_pipeline.py --trends                    Top skills/tools in demand this week
+  python run_pipeline.py --trends --days 30 --top 20  Custom window and list size
 """
 import sys
 import json
@@ -24,6 +26,7 @@ from rich import print as rprint
 from app.db.database import init_db, SessionLocal, Posting
 from app.pipeline import run_pipeline
 from app.drafting.drafter import draft as generate_draft, tailor as generate_tailor
+from app.analytics.trends import compute_trends
 
 console = Console()
 
@@ -339,6 +342,63 @@ def cmd_set_status(url: str, status: str):
         db.close()
 
 
+CATEGORY_COLOR = {
+    "language":  "bright_cyan",
+    "framework": "bright_magenta",
+    "ml":        "bright_green",
+    "cloud":     "bright_yellow",
+    "database":  "bright_blue",
+    "tool":      "grey70",
+}
+
+BAR_WIDTH = 30
+
+
+def cmd_trends(days: int, top_n: int):
+    init_db()
+    db = SessionLocal()
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        postings = (
+            db.query(Posting)
+            .filter(Posting.posted_at.isnot(None), Posting.posted_at >= cutoff)
+            .all()
+        )
+
+        if not postings:
+            console.print(f"[dim]No postings found within the last {days} day(s).[/]")
+            return
+
+        results = compute_trends(postings, top_n=top_n)
+        if not results:
+            console.print("[dim]No recognized skills/tools found in this window.[/]")
+            return
+
+        console.print(Rule(
+            f"[bold cyan]Top {len(results)} skills — last {days}d "
+            f"({len(postings)} posting(s) scanned)[/]"
+        ))
+        console.print()
+
+        max_count = results[0].count
+        for i, r in enumerate(results, 1):
+            color = CATEGORY_COLOR.get(r.category, "white")
+            filled = round((r.count / max_count) * BAR_WIDTH) if max_count else 0
+            bar = "█" * filled + "░" * (BAR_WIDTH - filled)
+
+            line = Text()
+            line.append(f"  {i:>2}. ", style="grey58")
+            line.append(f"{r.name:<14}", style=f"bold {color}")
+            line.append(f" {bar} ", style=color)
+            line.append(f"{r.count:>3}", style="bright_white")
+            line.append(f"  ({r.pct:.0f}%)", style="grey58")
+            console.print(line)
+
+        console.print()
+    finally:
+        db.close()
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -380,6 +440,16 @@ if __name__ == "__main__":
             cmd_set_status(args[idx + 1], args[idx + 2])
         else:
             console.print("[red]Usage:[/] --status <url> <new|reviewed|sent|rejected>")
+
+    elif "--trends" in args:
+        days = 7
+        top_n = 15
+        for i, a in enumerate(args):
+            if a == "--days" and i + 1 < len(args):
+                days = int(args[i + 1])
+            elif a == "--top" and i + 1 < len(args):
+                top_n = int(args[i + 1])
+        cmd_trends(days=days, top_n=top_n)
 
     elif "--source" in args:
         idx = args.index("--source")
