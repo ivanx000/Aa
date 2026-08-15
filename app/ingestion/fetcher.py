@@ -104,14 +104,29 @@ def _fetch_hn_who_is_hiring() -> list[dict]:
             break
 
         for c in comments:
-            text = re.sub(r"<[^>]+>", " ", c.get("comment_text", "") or "").strip()
+            raw = c.get("comment_text", "") or ""
+            # HN wraps paragraphs in <p>/<br> with no literal newlines, so
+            # convert those to "\n" *before* stripping tags — otherwise the
+            # whole comment collapses into one line and "first line" ends up
+            # being the entire post.
+            raw = re.sub(r"<p>|<br\s*/?>", "\n", raw, flags=re.IGNORECASE)
+            text = re.sub(r"<[^>]+>", " ", raw).strip()
+            text = re.sub(r"[ \t]*\n[ \t]*", "\n", text).strip()
             if not _is_real_posting(text):
                 continue
 
             obj_id = c.get("objectID", "")
             url = f"https://news.ycombinator.com/item?id={obj_id}"
             first_line = text.split("\n")[0].strip()
-            company = first_line.split("|")[0].strip() if "|" in first_line else ""
+
+            # Convention is "Company | Role | Location | ...". When it's
+            # followed, use the role field alone as the title so seniority/
+            # intern signals aren't diluted by company name or the trailing
+            # location/comp/tags fields. Freeform comments with no "|" fall
+            # back to the whole first line, as before.
+            parts = [p.strip() for p in first_line.split("|")] if "|" in first_line else []
+            company = parts[0] if len(parts) >= 2 else ""
+            role = parts[1] if len(parts) >= 2 else first_line
 
             # Parse posted_at from unix timestamp
             created_ts = c.get("created_at_i")
@@ -122,7 +137,7 @@ def _fetch_hn_who_is_hiring() -> list[dict]:
 
             postings.append({
                 "url": url,
-                "title": first_line[:200],
+                "title": role[:200],
                 "company": company[:200],
                 "description": text,
                 "source": "hn_who_is_hiring",
