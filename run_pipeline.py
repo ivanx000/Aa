@@ -98,6 +98,8 @@ def print_posting(p: Posting, show_draft: bool = False, show_tailor: bool = Fals
     title   = (p.title   or "").strip()
 
     header = Text()
+    if p.status != "new":
+        header.append(f"  [{p.status.upper()}]", style=f"bold {status_color}")
     header.append(f"  {company}", style=f"bold {status_color}")
     if title and title != company:
         # Trim title to avoid repetition if it starts with company name
