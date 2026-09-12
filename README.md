@@ -11,6 +11,7 @@ A personal terminal tool that ingests job postings, filters them to relevant int
 - Suggests resume keywords and bullet rewrites tailored to each posting
 - Tracks status (new → reviewed → sent / rejected) in a local SQLite DB
 - Reports the top skills/tools/languages showing up across all scraped postings (not just intern-filtered ones), so you can see what the market is asking for right now
+- Watches LinkedIn for new postings matching a keyword search (e.g. "Software Engineer Intern") and sends a macOS notification with a link straight to the posting
 
 Everything is manual and on-demand — you review and send, the tool just surfaces and drafts.
 
@@ -62,7 +63,27 @@ python run_pipeline.py --trends
 
 # Custom window and list size
 python run_pipeline.py --trends --days 30 --top 20
+
+# Watch LinkedIn and get a macOS notification (with a link) on each new match
+python run_pipeline.py --watch-linkedin
+python run_pipeline.py --watch-linkedin --keywords "Software Engineer Intern" --location Canada
+python run_pipeline.py --watch-linkedin --interval 300   # poll every 5 minutes (default)
+
+# Single check-and-notify pass, e.g. for cron/launchd instead of a long-running loop
+python run_pipeline.py --watch-linkedin --once
 ```
+
+### LinkedIn watch notifications
+
+`--watch-linkedin` polls LinkedIn's public job-search page (no login) for postings
+matching `--keywords`/`--location` (or `LINKEDIN_KEYWORDS`/`LINKEDIN_LOCATION` in
+`.env`), stores new ones (reusing the same filter as the rest of the pipeline —
+see `is_relevant` in `app/filtering/filter.py`), and fires a notification for each
+one it hasn't notified about yet.
+
+- Install [`terminal-notifier`](https://github.com/julienXX/terminal-notifier) (`brew install terminal-notifier`) so clicking the notification opens the job directly in your browser. Without it, notifications still appear (via `osascript`) but you'll need to copy the link from the terminal.
+- Runs as a foreground loop by default — for it to fire while you're not watching a terminal, either leave it running in a background terminal tab, or run `--watch-linkedin --once` on a schedule via `cron`/`launchd`.
+- LinkedIn markup and rate limiting can change without notice — this hits a public, unauthenticated endpoint, not an official API, so treat it as best-effort and keep polling infrequent (default: every 5 minutes).
 
 ## Stack
 

@@ -33,6 +33,11 @@ python run_pipeline.py --status <url> reviewed|sent|rejected
 python run_pipeline.py --trends
 python run_pipeline.py --trends --days 30 --top 20   # custom window / list size
 
+# Poll LinkedIn and send a macOS notification (with a link) on each new match
+python run_pipeline.py --watch-linkedin
+python run_pipeline.py --watch-linkedin --keywords "Software Engineer Intern" --location Canada --interval 300
+python run_pipeline.py --watch-linkedin --once       # single pass, for cron/launchd
+
 # Run the FastAPI server (not needed for normal use)
 uvicorn app.main:app --reload
 
@@ -44,6 +49,7 @@ python -c "
 import sqlite3; conn = sqlite3.connect('pipeline.db')
 conn.execute('ALTER TABLE postings ADD COLUMN posted_at DATETIME')
 conn.execute('ALTER TABLE postings ADD COLUMN tailoring TEXT')
+conn.execute('ALTER TABLE postings ADD COLUMN notified_at DATETIME')
 conn.commit()
 "
 ```
@@ -58,11 +64,15 @@ run_pipeline.py  ←── primary CLI entrypoint (rich terminal UI)
       ▼
 app/pipeline.py  ←── orchestrates ingest → filter (no drafting)
       │
-      ├── app/ingestion/fetcher.py   fetch_and_store(source, db)
+      ├── app/ingestion/fetcher.py   fetch_and_store(source, db, **kwargs)
       │     Sources: hn_who_is_hiring (Algolia API), remoteok (JSON API), remotive (JSON API),
-      │              adzuna (JSON API, requires free ADZUNA_APP_ID/ADZUNA_APP_KEY in .env)
+      │              adzuna (JSON API, requires free ADZUNA_APP_ID/ADZUNA_APP_KEY in .env),
+      │              linkedin (public guest job-search HTML, no login — see below)
       │     Dedupes by URL. Stores posted_at from each source's timestamp field.
       │     Filters junk with MIN_POSTING_LENGTH=150 + JUNK_PATTERNS regex.
+      │     "linkedin" is excluded from the "all" source and driven only by
+      │     --watch-linkedin — it's polled frequently with a 1h f_TPR window,
+      │     unlike the other sources which are pulled broadly on each run.
       │
       └── app/filtering/filter.py    is_relevant(title, description)
             Three required checks (all must pass):
@@ -88,6 +98,19 @@ app/analytics/trends.py
   intern-filtered subset — this is a market-wide signal, not a search result.
   Bare "C" and "go" are deliberately excluded from the taxonomy — too noisy as
   common English words/abbreviations ("C-suite", "go-to-market") in free text.
+
+LinkedIn watch (--watch-linkedin, called directly from run_pipeline.py, never from pipeline.py):
+
+  Loops (or, with --once, runs a single pass — for cron/launchd) calling
+  run_pipeline(source="linkedin", ...) on an interval, then queries for
+  postings with status="new" and notified_at IS NULL and fires a notification
+  (app/notify/notifier.py) for each, marking notified_at so it isn't repeated.
+  Uses the same is_relevant() filter as the rest of the pipeline, so a
+  "Software Engineer Intern" search still gets the intern/location screen.
+  app/notify/notifier.py shells out to `terminal-notifier` (click opens the
+  job URL) if installed, else `osascript` (no click-to-open). Values are
+  always passed as separate argv entries, never interpolated into a shell or
+  AppleScript string, since posting titles/companies are untrusted scraped text.
 ```
 
 ## Data model
@@ -104,6 +127,7 @@ Single table `postings` in `pipeline.db` (SQLite):
 | `keywords` | JSON list — NULL until `--draft` is run |
 | `tailoring` | JSON `{blurb, keywords, bullets_to_emphasize, rewrites}` — NULL until `--tailor` |
 | `status` | `new` → `reviewed` → `sent` / `rejected` |
+| `notified_at` | Set once `--watch-linkedin` has sent a notification for this posting — NULL until then |
 
 SQLAlchemy does not auto-migrate. Add columns manually with `ALTER TABLE` when the schema changes.
 

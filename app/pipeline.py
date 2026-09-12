@@ -9,9 +9,9 @@ from app.filtering.filter import is_relevant
 from app.db.database import Posting
 
 
-def run_pipeline(source: str, db: Session) -> dict:
+def run_pipeline(source: str, db: Session, **kwargs) -> dict:
     # Step 1: Ingest
-    ingest_result = fetch_and_store(source=source, db=db)
+    ingest_result = fetch_and_store(source=source, db=db, **kwargs)
     if "error" in ingest_result:
         return ingest_result
 

@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     adzuna_app_id: str = ""
     adzuna_app_key: str = ""
 
+    # LinkedIn watch (--watch-linkedin) — overridable per-run with --keywords/--location
+    linkedin_keywords: str = "Software Engineer Intern"
+    linkedin_location: str = "Canada"
+
     # Filtering
     target_keywords: list[str] = [
         "machine learning", "ml engineer", "ai engineer", "llm",

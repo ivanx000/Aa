@@ -27,6 +27,7 @@ class Posting(Base):
     keywords = Column(Text)                          # JSON list — filled on demand via --draft
     tailoring = Column(Text)                         # JSON resume tailoring — filled via --tailor
     status = Column(String, default="new")           # new | reviewed | sent | rejected
+    notified_at = Column(DateTime)                   # set once --watch-linkedin has notified for this posting
 
 
 def init_db():
