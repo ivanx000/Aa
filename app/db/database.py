@@ -20,13 +20,10 @@ class Posting(Base):
     title = Column(String, nullable=False)
     company = Column(String)
     description = Column(Text)
-    source = Column(String)                          # e.g. "hn_who_is_hiring", "remoteok"
+    source = Column(String)                          # "linkedin"
     posted_at = Column(DateTime)                     # when the job was originally posted
     fetched_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    draft = Column(Text)                             # filled on demand via --draft
-    keywords = Column(Text)                          # JSON list — filled on demand via --draft
-    tailoring = Column(Text)                         # JSON resume tailoring — filled via --tailor
-    status = Column(String, default="new")           # new | reviewed | sent | rejected
+    status = Column(String, default="new")           # new | rejected (set by the relevance filter)
     notified_at = Column(DateTime)                   # set once --watch-linkedin has notified for this posting
 
 

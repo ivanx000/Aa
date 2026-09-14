@@ -1,6 +1,5 @@
 """
 Pipeline: ingestion → filter → store.
-Drafting and tailoring are on-demand only (see run_pipeline.py --draft / --tailor).
 """
 from sqlalchemy.orm import Session
 
@@ -18,7 +17,7 @@ def run_pipeline(source: str, db: Session, **kwargs) -> dict:
     # Step 2: Filter — mark non-matching postings as rejected
     unfiltered = (
         db.query(Posting)
-        .filter(Posting.status == "new", Posting.draft.is_(None))
+        .filter(Posting.status == "new")
         .all()
     )
 

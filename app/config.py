@@ -4,14 +4,6 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     database_url: str = "sqlite:///./pipeline.db"
 
-    # Ollama
-    ollama_host: str = "http://localhost:11434"
-    ollama_model: str = "llama3.2"   # change to any model you have pulled, e.g. mistral, phi3
-
-    # Adzuna (free tier — register at https://developer.adzuna.com/)
-    adzuna_app_id: str = ""
-    adzuna_app_key: str = ""
-
     # LinkedIn watch (--watch-linkedin) — overridable per-run with --keywords/--location
     linkedin_keywords: str = "Software Engineer Intern"
     linkedin_location: str = "Canada"
