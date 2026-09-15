@@ -35,7 +35,7 @@ app/pipeline.py  ←── orchestrates ingest → filter
       │
       └── app/filtering/filter.py    is_relevant(title, description)
             Three required checks (all must pass):
-            1. _keyword_match   — target role keywords (ML, full-stack, robotics, SaaS, etc.)
+            1. _keyword_match   — target role keywords (ML/AI, full-stack, SaaS, etc.)
             2. _intern_match    — must be intern/co-op/student/new-grad/junior/entry-level
             3. _location_ok     — remote OK anywhere; onsite/hybrid must be in Canada
 

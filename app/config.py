@@ -11,7 +11,8 @@ class Settings(BaseSettings):
     # Filtering
     target_keywords: list[str] = [
         "machine learning", "ml engineer", "ai engineer", "llm",
-        "robotics", "full stack", "fullstack", "full-stack",
+        "artificial intelligence", "generative ai", "genai",
+        "full stack", "fullstack", "full-stack",
         "backend", "back-end", "back end",
         "frontend", "front-end", "front end",
         "software engineer", "software developer", "swe",

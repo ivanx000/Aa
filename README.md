@@ -5,7 +5,7 @@ A personal terminal tool that polls LinkedIn's public job search for new intern/
 ## What it does
 
 - Polls LinkedIn's public guest job-search page (no login) for postings matching a keyword search (default: "Software Engineer Intern")
-- Filters to intern/co-op/student roles in target fields (ML, full-stack, robotics, SaaS, etc.), remote anywhere or onsite/hybrid in Canada
+- Filters to intern/co-op/student roles in target fields (ML/AI, full-stack, SaaS, etc.), remote anywhere or onsite/hybrid in Canada
 - Dedupes by URL and only notifies once per posting, tracked in a local SQLite DB
 - Fires a native macOS alert (click "Open" to jump straight to the job) when a new match is found
 
